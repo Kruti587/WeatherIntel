@@ -1,0 +1,170 @@
+/* ============================================================
+   Dashboard Component Styles — Roti Palette Theme
+   ============================================================ */
+
+/* ---------- Scrollbar — Roti ---------- */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--roti-300); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--roti-500); }
+
+/* ---------- Animations ---------- */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-in  { animation: fadeIn 0.3s ease-out both; }
+.slide-in { animation: fadeIn 0.3s ease-out both; }
+
+/* ---------- Leaflet map — Roti warm light overrides ---------- */
+.leaflet-container {
+  background: var(--roti-100) !important;
+  border-radius: var(--radius-lg) !important;
+}
+.leaflet-control-zoom {
+  border: none !important;
+  border-radius: var(--radius-md) !important;
+  background: #ffffff !important;
+  box-shadow: var(--shadow-card) !important;
+}
+.leaflet-control-zoom a {
+  color: var(--sand-600) !important;
+  border-bottom: 1px solid var(--roti-200) !important;
+  transition: background 0.15s, color 0.15s;
+}
+.leaflet-control-zoom a:hover {
+  background: var(--roti-100) !important;
+  color: var(--roti-600) !important;
+}
+.leaflet-popup-content-wrapper {
+  background: #ffffff !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: var(--shadow-lg) !important;
+  color: var(--sand-900) !important;
+  border: 1px solid var(--roti-200);
+}
+.leaflet-popup-tip {
+  background: #ffffff !important;
+  border: 1px solid var(--roti-200);
+}
+.leaflet-popup-content { font-family: system-ui, sans-serif !important; color: var(--sand-900) !important; }
+.leaflet-control-attribution {
+  background: rgba(255,255,255,0.94) !important;
+  color: var(--sand-500) !important;
+  font-size: 10px !important;
+  border-top-left-radius: var(--radius-sm) !important;
+  border: 1px solid var(--roti-200) !important;
+}
+.leaflet-control-attribution a { color: var(--roti-500) !important; }
+
+/* Dark mode Leaflet */
+html.dark .leaflet-container { background: #1e1810 !important; }
+html.dark .leaflet-control-zoom { background: #2a2216 !important; }
+html.dark .leaflet-control-zoom a { color: var(--roti-300) !important; border-bottom-color: rgba(191,164,64,0.20) !important; }
+html.dark .leaflet-control-zoom a:hover { background: rgba(191,164,64,0.12) !important; color: var(--roti-400) !important; }
+html.dark .leaflet-popup-content-wrapper { background: #2a2216 !important; color: var(--roti-100) !important; border-color: rgba(191,164,64,0.20); }
+html.dark .leaflet-popup-tip { background: #2a2216 !important; }
+html.dark .leaflet-control-attribution { background: rgba(42,34,22,0.94) !important; color: var(--roti-400) !important; }
+
+/* ---------- Layer control panel animation ---------- */
+.layer-panel-enter {
+  opacity: 0;
+  transform: translateX(-10px);
+}
+.layer-panel-enter-active {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 200ms, transform 200ms;
+}
+
+/* ---------- Metric card ---------- */
+.metric-card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.metric-card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px -5px rgba(191, 164, 64, 0.22), 0 10px 10px -5px rgba(119, 93, 41, 0.10);
+}
+
+/* ---------- Timeline bar ---------- */
+.timeline-bar {
+  transition: height 0.5s ease, opacity 0.3s ease;
+}
+
+/* ---------- Replay slider ---------- */
+.replay-track {
+  position: relative;
+  height: 8px;
+  border-radius: 4px;
+  background: linear-gradient(to right, var(--roti-300), var(--roti-500), var(--blue-400));
+  cursor: pointer;
+}
+.replay-thumb {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 3px solid var(--roti-500);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+  transform: translate(-50%, -50%);
+  cursor: grab;
+  transition: box-shadow 0.2s;
+}
+.replay-thumb:hover {
+  box-shadow: 0 4px 14px rgba(191, 164, 64, 0.50);
+}
+
+/* ============================================================
+   DANGER / CALAMITY DASHBOARD EFFECTS
+   ============================================================ */
+
+/* ── Map danger scanline ── horizontal light sweep across map */
+@keyframes map-scanline {
+  0%   { top: -2px; }
+  100% { top: 100%; }
+}
+.map-scanline {
+  position: absolute;
+  left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(244,63,94,0.25), rgba(191,164,64,0.40), transparent);
+  z-index: 20;
+  pointer-events: none;
+  animation: map-scanline 4.5s linear infinite;
+}
+
+/* ── Layer danger card ── shimmer on card border */
+@keyframes danger-shimmer {
+  0%, 100% { box-shadow: 0 0 0  0   rgba(244,63,94,0.00); }
+  40%      { box-shadow: 0 0 12px 4px rgba(244,63,94,0.10), 0 0 4px 1px rgba(191,164,64,0.15); }
+}
+.layer-card-danger {
+  border-color: rgba(244,63,94,0.22) !important;
+  background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,240,243,0.80)) !important;
+  animation: danger-shimmer 5s ease-in-out infinite;
+}
+.layer-card-danger:hover {
+  box-shadow: 0 0 24px rgba(244,63,94,0.18) !important;
+}
+
+/* ── Data flow line ── animated vertical gradient bar next to live panels */
+@keyframes flow-line {
+  0%   { background-position: 0% 0%;   opacity: 0; }
+  20%  { opacity: 0.9; }
+  80%  { opacity: 0.9; }
+  100% { background-position: 0% 500%; opacity: 0; }
+}
+.data-flow-line {
+  position: absolute;
+  width: 2px;
+  height: 80px;
+  background: linear-gradient(to bottom, transparent, var(--roti-500), var(--danger), transparent);
+  background-size: 100% 500%;
+  border-radius: 1px;
+  animation: flow-line 2.8s ease-in-out infinite;
+  pointer-events: none;
+}

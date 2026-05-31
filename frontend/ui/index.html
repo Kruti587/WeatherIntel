@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>WeatherIntel | Bengaluru Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Leaflet — interactive map library (already in frontend/package.json, loaded from CDN here for the vanilla UI) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        body {
+            background-color: #f8fafc;
+            color: #0f172a;
+        }
+
+        .glass-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+        }
+
+        .active-tab {
+            background-color: #2563eb !important;
+            color: white !important;
+        }
+
+        .tab-button {
+            color: #475569;
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+
+        .tab-button:hover {
+            background-color: #f1f5f9;
+        }
+
+        .active-tab:hover {
+            background-color: #2563eb !important;
+        }
+
+        /* Map container must have explicit height for Leaflet to render */
+        #bengaluru-map {
+            height: 420px;
+            border-radius: 1.5rem;
+            z-index: 0;
+        }
+
+        /* WebSocket status pill */
+        #ws-status {
+            transition: background-color 0.4s ease;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen p-8">
+
+    <header class="max-w-6xl mx-auto flex justify-between items-center mb-10">
+        <div>
+            <h1 class="text-3xl font-black text-blue-600">WeatherIntel</h1>
+            <p class="text-xs text-slate-400 font-semibold mt-0.5">Karnataka Environmental Intelligence</p>
+        </div>
+        <div class="flex items-center gap-4">
+            <div class="text-right">
+                <p id="clock" class="text-sm font-bold opacity-50"></p>
+                <p class="text-[10px] uppercase font-bold text-emerald-600">● Live Data Link</p>
+                <span id="ws-status"
+                    class="inline-block mt-1 px-2 py-1 rounded-full bg-slate-200 text-slate-500 text-[10px] font-black">⬤
+                    WS Connecting</span>
+            </div>
+            <div class="flex flex-col items-end gap-2">
+                <div id="user-badge"
+                    class="px-3 py-1.5 rounded-xl bg-indigo-50 border border-indigo-100 text-xs font-bold text-indigo-700 hidden">
+                    👤 <span id="user-name">—</span>
+                    <span id="user-role"
+                        class="ml-1 px-1.5 py-0.5 rounded-md bg-indigo-100 text-indigo-600 text-[10px] uppercase"></span>
+                </div>
+                <div class="flex gap-2">
+                    <button id="sound-toggle"
+                        class="px-3 py-2 rounded-xl bg-slate-100 text-slate-600 text-[10px] font-black uppercase tracking-wide hover:bg-slate-200 transition-colors">Sound:
+                        On</button>
+                    <button onclick="logout()"
+                        class="px-3 py-2 rounded-xl bg-red-50 text-red-600 text-[10px] font-black uppercase tracking-wide hover:bg-red-100 transition-colors border border-red-100">Sign
+                        Out</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex justify-center mb-12">
+        <div class="glass-card p-2 rounded-2xl grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 w-full max-w-6xl">
+            <button onclick="showPage('home')" id="tab-home" class="tab-button py-3 rounded-xl font-bold active-tab">🏠
+                Live Weather</button>
+            <button onclick="showPage('aviation')" id="tab-aviation" class="tab-button py-3 rounded-xl font-bold">✈️
+                Aviation</button>
+            <button onclick="showPage('agriculture')" id="tab-agriculture"
+                class="tab-button py-3 rounded-xl font-bold">🌾 Agriculture</button>
+            <button onclick="showPage('disaster')" id="tab-disaster" class="tab-button py-3 rounded-xl font-bold">🚨
+                Disaster</button>
+            <button onclick="showPage('analysis')" id="tab-analysis" class="tab-button py-3 rounded-xl font-bold">📊
+                Forecast</button>
+            <button onclick="showPage('anomaly')" id="tab-anomaly" class="tab-button py-3 rounded-xl font-bold">🔬
+                Anomalies</button>
+            <button onclick="showPage('map')" id="tab-map" class="tab-button py-3 rounded-xl font-bold">🗺️ City
+                Map</button>
+            <button onclick="showPage('reports')" id="tab-reports" class="tab-button py-3 rounded-xl font-bold">📋
+                Reports</button>
+        </div>
+    </div>
+
+    <main id="main-content" class="max-w-6xl mx-auto">
+    </main>
+
+    <script>
+        const API_BASE = 'http://localhost:3001';
+        const pageTitles = {
+            aviation: 'Aviation Safety',
+            agriculture: 'Agriculture Risk',
+            disaster: 'Disaster Management',
+            reports: 'Database Reports',
+        };
+        let currentPage = 'home';
+        let refreshTimer = null;
+        let lastSeenAlertId = 0;
+        let audioEnabled = true;
+        let audioContext = null;
+        let alertsPollTimer = null;
+        const badgeCounts = { aviation: 0, agriculture: 0, disaster: 0, reports: 0 };
+        const departmentToPage = { Aviation: 'aviation', Agriculture: 'agriculture', Disaster: 'disaster' };
+        const ALERT_POLL_INTERVAL_MS = 10000;
+
+        // ── Session management ────────────────────────────────
+        const SESSION_ID = localStorage.getItem('wi_session');
+        const WI_USER = JSON.parse(localStorage.getItem('wi_user') || 'null');
+
+        function getAuthHeaders() {
+            return SESSION_ID ? { 'X-Session-Id': SESSION_ID } : {};
+        }
+
+        // Check session on load — redirect to login if not authenticated
+        (async function checkSession() {
+            if (!SESSION_ID) { window.location.href = '/login.html'; return; }
+            try {
+                const res = await fetch(`${API_BASE}/api/auth/me`, {
+                    headers: getAuthHeaders(), credentials: 'include'
+                });
+                if (!res.ok) {
+                    localStorage.removeItem('wi_session');
+                    localStorage.removeItem('wi_user');
+                    window.location.href = '/login.html';
+                }
+            } catch { /* server unreachable — allow offline view */ }
+        })();
+
+        function logout() {
+            fetch(`${API_BASE}/api/auth/logout`, {
+                method: 'POST', headers: getAuthHeaders(), credentials: 'include'
+            }).finally(() => {
+                localStorage.removeItem('wi_session');
+                localStorage.removeItem('wi_user');
+                window.location.href = '/login.html';
+            });
+        }
+
+        function ensureAudioContext() {
+            if (!audioContext) {
+                const AudioContextImpl = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContextImpl) return null;
+                audioContext = new AudioContextImpl();
+            }
+
+            if (audioContext.state === 'suspended') {
+                audioContext.resume().catch(() => { });
+            }
+
+            return audioContext;
+        }
+
+        function playToneSequence(sequence) {
+            const ctx = ensureAudioContext();
+            if (!ctx || !audioEnabled) return;
+
+            const now = ctx.currentTime;
+            let cursor = now;
+
+            for (const step of sequence) {
+                const oscillator = ctx.createOscillator();
+                const gain = ctx.createGain();
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(step.freq, cursor);
+
+                gain.gain.setValueAtTime(0.0001, cursor);
+                gain.gain.exponentialRampToValueAtTime(step.gain, cursor + 0.01);
+                gain.gain.exponentialRampToValueAtTime(0.0001, cursor + step.duration);
+
+                oscillator.connect(gain);
+                gain.connect(ctx.destination);
+
+                oscillator.start(cursor);
+                oscillator.stop(cursor + step.duration + 0.02);
+
+                cursor += step.duration + (step.pause || 0);
+            }
+        }
+
+        function playWarningSound() {
+            playToneSequence([{ freq: 880, gain: 0.18, duration: 0.18, pause: 0.05 }]);
+        }
+
+        function playCriticalSound() {
+            playToneSequence([
+                { freq: 740, gain: 0.22, duration: 0.16, pause: 0.04 },
+                { freq: 1040, gain: 0.22, duration: 0.16, pause: 0.08 },
+                { freq: 740, gain: 0.22, duration: 0.16, pause: 0.04 },
+                { freq: 1040, gain: 0.22, duration: 0.16, pause: 0.08 },
+            ]);
+        }
+
+        function setBadge(page, count) {
+            badgeCounts[page] = count;
+            const button = document.getElementById(`tab-${page}`);
+            if (!button) return;
+            const badge = button.querySelector('[data-badge]');
+            if (!badge) return;
+            if (count > 0) {
+                badge.textContent = count > 99 ? '99+' : String(count);
+                badge.classList.remove('hidden');
+            } else {
+                badge.textContent = '';
+                badge.classList.add('hidden');
+            }
+        }
+
+        function bumpBadge(page) {
+            setBadge(page, (badgeCounts[page] || 0) + 1);
+            if (page !== 'reports') {
+                setBadge('reports', (badgeCounts.reports || 0) + 1);
+            }
+        }
+
+        function attachBadges() {
+            ['aviation', 'agriculture', 'disaster', 'reports'].forEach((page) => {
+                const button = document.getElementById(`tab-${page}`);
+                if (!button) return;
+                const badge = document.createElement('span');
+                badge.dataset.badge = '1';
+                badge.className = 'hidden ml-2 inline-flex items-center justify-center px-2 py-1 rounded-full bg-red-600 text-white text-[10px] font-black';
+                button.appendChild(badge);
+            });
+        }
+
+        async function bootstrapAlerts() {
+            attachBadges();
+            try {
+                const response = await fetch(`${API_BASE}/api/alerts?limit=1`);
+                const alerts = await response.json();
+                lastSeenAlertId = alerts?.[0]?.alert_id ? Number(alerts[0].alert_id) : 0;
+            } catch (e) {
+                lastSeenAlertId = 0;
+            }
+
+            const toggle = document.getElementById('sound-toggle');
+            if (toggle) {
+                toggle.addEventListener('click', () => {
+                    ensureAudioContext();
+                    audioEnabled = !audioEnabled;
+                    toggle.textContent = audioEnabled ? 'Sound: On' : 'Sound: Off';
+                });
+            }
+
+            document.addEventListener('click', ensureAudioContext, { once: true });
+            startAlertsPolling();
+        }
+
+        function startAlertsPolling() {
+            if (alertsPollTimer) clearInterval(alertsPollTimer);
+            alertsPollTimer = setInterval(fetchAlertUpdates, ALERT_POLL_INTERVAL_MS);
+            fetchAlertUpdates();
+        }
+
+        async function fetchAlertUpdates() {
+            try {
+                const response = await fetch(`${API_BASE}/api/alerts/updates?after_id=${encodeURIComponent(lastSeenAlertId)}&limit=50`);
+                const updates = await response.json();
+                if (!Array.isArray(updates) || updates.length === 0) return;
+
+                let maxId = lastSeenAlertId;
+                let hasCritical = false;
+                let hasWarning = false;
+
+                for (const alert of updates) {
+                    const alertId = Number(alert.alert_id);
+                    if (Number.isFinite(alertId) && alertId > maxId) maxId = alertId;
+                    if (alert.severity === 'Critical') hasCritical = true;
+                    if (alert.severity === 'Warning') hasWarning = true;
+
+                    const page = departmentToPage[alert.department];
+                    if (page) bumpBadge(page);
+                }
+
+                lastSeenAlertId = maxId;
+
+                if (hasCritical) playCriticalSound();
+                else if (hasWarning) playWarningSound();
+            } catch (e) { }
+        }
+
+        function formatValue(value, decimals = 0) {
+            const number = Number(value);
+            if (!Number.isFinite(number)) return '--';
+            return number.toFixed(decimals).replace(/\.0+$/, '');
+        }
+
+        function setActiveTab(page) {
+            document.querySelectorAll('.tab-button').forEach((button) => {
+                button.classList.remove('active-tab');
+                button.setAttribute('aria-selected', 'false');
+            });
+
+            const active = document.getElementById(`tab-${page}`);
+            if (active) {
+                active.classList.add('active-tab');
+                active.setAttribute('aria-selected', 'true');
+            }
+        }
+
+        async function fetchRealData() {
+            try {
+                const res = await fetch(`${API_BASE}/api/latest-weather`);
+                const data = await res.json();
+                const findVal = (name, decimals = 0) => {
+                    const match = data.find((d) => d.parameter_name === name);
+                    return match ? formatValue(match.measured_value, decimals) : '--';
+                };
+
+                if (document.getElementById('temp')) {
+                    document.getElementById('temp').innerText = `${findVal('Temperature')}°`;
+                    document.getElementById('wind').innerText = findVal('Wind Speed', 1);
+                    document.getElementById('hum').innerText = `${findVal('Humidity')}%`;
+                    document.getElementById('vis').innerText = `${findVal('Visibility', 1)} km`;
+                    document.getElementById('press').innerText = findVal('Pressure');
+                    document.getElementById('precip').innerText = `${findVal('Precipitation', 1)} mm`;
+                }
+            } catch (e) {
+                console.log('Waiting for server...');
+            }
+        }
+
+        function trendIcon(parameter) {
+            const history = parameter.history || [];
+            if (!parameter.current || history.length === 0) return { icon: '●', color: 'text-slate-500', label: 'new' };
+
+            const previous = Number(history[history.length - 1].value);
+            const current = Number(parameter.current.value);
+            if (Math.abs(current - previous) < 0.1) return { icon: '→', color: 'text-blue-600', label: 'steady' };
+            if (current > previous) return { icon: '↑', color: 'text-red-600', label: 'up' };
+            return { icon: '↓', color: 'text-emerald-600', label: 'down' };
+        }
+
+        function buildLineChart(points, color, labelPrefix) {
+            if (!points.length) {
+                return `<div class="h-28 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 font-bold">No data</div>`;
+            }
+
+            const values = points.map((point) => Number(point.value));
+            const min = Math.min(...values);
+            const max = Math.max(...values);
+            const range = max - min || 1;
+            const width = 320;
+            const height = 112;
+            const padding = 16;
+            const step = points.length === 1 ? 0 : (width - padding * 2) / (points.length - 1);
+            const coords = points.map((point, index) => {
+                const x = padding + step * index;
+                const y = height - padding - ((Number(point.value) - min) / range) * (height - padding * 2);
+                return { x, y, point };
+            });
+            const path = coords.map((coord, index) => `${index === 0 ? 'M' : 'L'} ${coord.x} ${coord.y}`).join(' ');
+            const dots = coords.map((coord, index) => `
+                <circle cx="${coord.x}" cy="${coord.y}" r="${index === coords.length - 1 ? 5 : 3}" fill="${color}">
+                    <title>${labelPrefix} ${coord.point.date || coord.point.time || coord.point.step}: ${formatValue(coord.point.value, 1)}</title>
+                </circle>
+            `).join('');
+
+            return `
+                <svg viewBox="0 0 ${width} ${height}" class="w-full h-28 rounded-xl bg-slate-50">
+                    <path d="${path}" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></path>
+                    ${dots}
+                </svg>
+            `;
+        }
+
+        function formatForecastTime(point) {
+            if (!point.time) return `#${point.step}`;
+            return new Date(point.time.replace(' ', 'T')).toLocaleString([], {
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+            });
+        }
+
+        function renderHome(main) {
+            main.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="md:col-span-2 lg:col-span-2 glass-card rounded-[3rem] p-12 text-center">
+                        <p class="text-xl font-medium opacity-40">Bengaluru</p>
+                        <h2 id="temp" class="text-[120px] font-thin leading-none tracking-tighter">--°</h2>
+                        <p class="text-lg font-bold text-blue-600">Current Live Weather</p>
+                    </div>
+                    <div class="glass-card rounded-[2.5rem] p-8 flex flex-col justify-between h-48">
+                        <p class="text-xs font-bold opacity-30 uppercase">🌬️ Wind</p>
+                        <p class="text-4xl font-bold"><span id="wind">--</span> <span class="text-sm">km/h</span></p>
+                    </div>
+                    <div class="glass-card rounded-[2.5rem] p-8 flex flex-col justify-between h-48">
+                        <p class="text-xs font-bold opacity-30 uppercase">💧 Humidity</p>
+                        <p id="hum" class="text-4xl font-bold">--%</p>
+                    </div>
+                    <div class="glass-card rounded-[2.5rem] p-8 flex flex-col justify-between h-48">
+                        <p class="text-xs font-bold opacity-30 uppercase">👁️ Visibility</p>
+                        <p id="vis" class="text-4xl font-bold">-- km</p>
+                    </div>
+                    <div class="glass-card rounded-[2.5rem] p-8 flex flex-col justify-between h-48">
+                        <p class="text-xs font-bold opacity-30 uppercase">⏲️ Pressure</p>
+                        <p id="press" class="text-4xl font-bold">--</p>
+                    </div>
+                    <div class="glass-card rounded-[2.5rem] p-8 flex flex-col justify-between h-48">
+                        <p class="text-xs font-bold opacity-30 uppercase">🌧️ Precipitation</p>
+                        <p id="precip" class="text-4xl font-bold">-- mm</p>
+                    </div>
+                </div>`;
+            setTimeout(fetchRealData, 50);
+        }
+
+        async function renderAlerts(main, page, silent = false) {
+            if (!silent) {
+                main.innerHTML = `<div class="p-10 text-center animate-pulse">Fetching ${pageTitles[page]} reports...</div>`;
+            }
+            try {
+                const response = await fetch(`${API_BASE}/api/alerts`);
+                const data = await response.json();
+                const filtered = data.filter((alert) => (alert.department || '').toLowerCase() === page.toLowerCase());
+
+                if (filtered.length > 0) {
+                    main.innerHTML = `<div class="max-w-2xl mx-auto">
+                        <h2 class="text-2xl font-black mb-6">${pageTitles[page]} Status</h2>
+                        ${filtered.map((alert) => `
+                            <div class="glass-card border-l-8 ${alert.severity === 'Critical' ? 'border-red-500' : 'border-orange-400'} p-6 rounded-2xl mb-4">
+                                <p class="text-[10px] font-bold uppercase mb-2">${alert.severity}</p>
+                                <p class="text-slate-700">${alert.alert_message}</p>
+                            </div>
+                        `).join('')}
+                    </div>`;
+                } else {
+                    main.innerHTML = `<div class="p-20 text-center opacity-40">No active alerts for ${pageTitles[page]}.</div>`;
+                }
+            } catch (err) {
+                main.innerHTML = `<div class="p-20 text-center text-red-500 font-bold">Network Error: Server Unreachable</div>`;
+            }
+        }
+
+        async function renderAnalysis(main, silent = false) {
+            if (!silent) {
+                main.innerHTML = `<div class="p-10 text-center animate-pulse">Building analysis...</div>`;
+            }
+            try {
+                const response = await fetch(`${API_BASE}/api/analysis`);
+                const data = await response.json();
+
+                main.innerHTML = `
+                    <div class="mb-8">
+                        <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+                            <div>
+                                <h2 class="text-3xl font-black text-slate-900">10-Step Forecast Analysis</h2>
+                                <p class="text-slate-500 font-semibold mt-2">Previous stored daily averages, current live reading, and the next 10 OpenWeather forecast slots for Bengaluru.</p>
+                            </div>
+                            <p class="text-xs uppercase font-black text-emerald-600">Auto-refreshing</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        ${data.parameters.map((parameter) => {
+                    const trend = trendIcon(parameter);
+                    const current = parameter.current ? formatValue(parameter.current.value, 1) : '--';
+                    const historyPoints = [...parameter.history, ...(parameter.current ? [parameter.current] : [])];
+                    return `
+                                <section class="glass-card rounded-3xl p-6">
+                                    <div class="flex items-start justify-between gap-4 mb-5">
+                                        <div>
+                                            <p class="text-xs uppercase font-black text-slate-400">${parameter.name}</p>
+                                            <p class="text-4xl font-black mt-1">${current}<span class="text-sm ml-1 text-slate-400">${parameter.unit}</span></p>
+                                        </div>
+                                        <div class="${trend.color} text-5xl font-black leading-none" title="${trend.label}">${trend.icon}</div>
+                                    </div>
+                                    <p class="text-sm font-semibold text-slate-500 mb-5">${parameter.summary}</p>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div>
+                                            <p class="text-[10px] uppercase font-black text-slate-400 mb-2">Past + Current</p>
+                                            ${buildLineChart(historyPoints, '#2563eb', 'Reading')}
+                                        </div>
+                                        <div>
+                                            <p class="text-[10px] uppercase font-black text-slate-400 mb-2">Next 10 Forecasts</p>
+                                            ${buildLineChart(parameter.forecast, '#16a34a', 'Forecast')}
+                                        </div>
+                                    </div>
+                                    <div class="mt-4 flex flex-wrap gap-2">
+                                        ${parameter.forecast.map((point) => `
+                                            <span class="px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-black">${formatForecastTime(point)}: ${formatValue(point.value, 1)}</span>
+                                        `).join('')}
+                                    </div>
+                                </section>
+                            `;
+                }).join('')}
+                    </div>
+                `;
+            } catch (err) {
+                main.innerHTML = `<div class="p-20 text-center text-red-500 font-bold">Analysis unavailable. Start node server.js and try again.</div>`;
+            }
+        }
+
+        async function renderReports(main, silent = false) {
+            if (!silent) {
+                main.innerHTML = `<div class="p-10 text-center animate-pulse">Loading database reports...</div>`;
+            }
+
+            try {
+                const [summaryRes, dailyRes, alertsRes] = await Promise.all([
+                    fetch(`${API_BASE}/api/admin-summary`),
+                    fetch(`${API_BASE}/api/daily-report`),
+                    fetch(`${API_BASE}/api/alerts?limit=25`),
+                ]);
+                const summary = await summaryRes.json();
+                const daily = await dailyRes.json();
+                const alerts = await alertsRes.json();
+                const topDepartment = summary.top_department ? `${summary.top_department.department} (${summary.top_department.alert_count})` : 'None';
+
+                main.innerHTML = `
+                    <div class="mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+                        <div>
+                            <h2 class="text-3xl font-black text-slate-900">Database Reports</h2>
+                            <p class="text-slate-500 font-semibold mt-2">Operational summary, daily aggregates, alert filtering, and CSV export.</p>
+                        </div>
+                        <button onclick="exportAlerts()" class="px-4 py-3 rounded-xl bg-slate-900 text-white font-black">Download Alerts CSV</button>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                        ${reportMetric('Total Readings', summary.total_readings)}
+                        ${reportMetric('Total Alerts', summary.total_alerts)}
+                        ${reportMetric('Critical Alerts', summary.critical_alerts)}
+                        ${reportMetric('Top Department', topDepartment)}
+                    </div>
+
+                    <section class="glass-card rounded-3xl p-6 mb-8">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
+                            <div>
+                                <h3 class="text-xl font-black">Recent Alerts</h3>
+                                <p class="text-sm text-slate-500 font-semibold">Filter by severity for quick review.</p>
+                            </div>
+                            <select id="severity-filter" onchange="loadFilteredAlerts()" class="border border-slate-200 rounded-xl px-4 py-3 font-bold">
+                                <option>All</option>
+                                <option>Critical</option>
+                                <option>Warning</option>
+                            </select>
+                        </div>
+                        <div id="alerts-table">
+                            ${renderAlertsTable(alerts)}
+                        </div>
+                    </section>
+
+                    <section class="glass-card rounded-3xl p-6">
+                        <h3 class="text-xl font-black mb-2">Daily Weather Summary</h3>
+                        <p class="text-sm text-slate-500 font-semibold mb-5">Each row is one Bengaluru date, with average values separated by parameter.</p>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm">
+                                <thead>
+                                    <tr class="text-slate-400 uppercase text-xs">
+                                        <th class="py-3 pr-4">Day</th>
+                                        <th class="py-3 pr-4">Temp</th>
+                                        <th class="py-3 pr-4">Wind</th>
+                                        <th class="py-3 pr-4">Visibility</th>
+                                        <th class="py-3 pr-4">Humidity</th>
+                                        <th class="py-3 pr-4">Pressure</th>
+                                        <th class="py-3 pr-4">Rain</th>
+                                        <th class="py-3 pr-4">Readings</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${daily.map((row) => `
+                                        <tr class="border-t border-slate-100">
+                                            <td class="py-3 pr-4 font-bold">${formatReportDate(row.day)}</td>
+                                            <td class="py-3 pr-4">${formatNullable(row.avg_temperature, 1, '°C')}</td>
+                                            <td class="py-3 pr-4">${formatNullable(row.avg_wind_speed, 1, 'km/h')}</td>
+                                            <td class="py-3 pr-4">${formatNullable(row.avg_visibility, 1, 'km')}</td>
+                                            <td class="py-3 pr-4">${formatNullable(row.avg_humidity, 0, '%')}</td>
+                                            <td class="py-3 pr-4">${formatNullable(row.avg_pressure, 0, 'hPa')}</td>
+                                            <td class="py-3 pr-4">${formatNullable(row.avg_precipitation, 1, 'mm')}</td>
+                                            <td class="py-3 pr-4">${row.total_readings}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                `;
+            } catch (err) {
+                main.innerHTML = `<div class="p-20 text-center text-red-500 font-bold">Reports unavailable. Start node server.js and try again.</div>`;
+            }
+        }
+
+        function reportMetric(label, value) {
+            return `
+                <div class="glass-card rounded-2xl p-5">
+                    <p class="text-[10px] uppercase font-black text-slate-400">${label}</p>
+                    <p class="text-2xl font-black mt-2">${value ?? '--'}</p>
+                </div>
+            `;
+        }
+
+        function formatNullable(value, decimals, unit) {
+            if (value === null || value === undefined) return '--';
+            return `${formatValue(value, decimals)} ${unit}`;
+        }
+
+        function formatReportDate(day) {
+            if (!day) return '--';
+            const [year, month, date] = String(day).split('-');
+            return `${date}/${month}/${year}`;
+        }
+
+        function renderAlertsTable(alerts) {
+            if (!alerts.length) {
+                return `<div class="p-8 text-center text-slate-400 font-bold">No alerts found.</div>`;
+            }
+
+            return `
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead>
+                            <tr class="text-slate-400 uppercase text-xs">
+                                <th class="py-3 pr-4">Department</th>
+                                <th class="py-3 pr-4">Severity</th>
+                                <th class="py-3 pr-4">Message</th>
+                                <th class="py-3 pr-4">Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${alerts.map((alert) => `
+                                <tr class="border-t border-slate-100">
+                                    <td class="py-3 pr-4 font-bold">${alert.department}</td>
+                                    <td class="py-3 pr-4">
+                                        <span class="px-2 py-1 rounded-lg text-xs font-black ${alert.severity === 'Critical' ? 'bg-red-50 text-red-700' : 'bg-orange-50 text-orange-700'}">${alert.severity}</span>
+                                    </td>
+                                    <td class="py-3 pr-4">${alert.alert_message}</td>
+                                    <td class="py-3 pr-4">${new Date(alert.created_at).toLocaleString()}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        async function loadFilteredAlerts() {
+            const severity = document.getElementById('severity-filter')?.value || 'All';
+            const response = await fetch(`${API_BASE}/api/alerts?severity=${encodeURIComponent(severity)}&limit=25`);
+            const alerts = await response.json();
+            const table = document.getElementById('alerts-table');
+            if (table) table.innerHTML = renderAlertsTable(alerts);
+        }
+
+        function exportAlerts() {
+            window.location.href = `${API_BASE}/api/alerts/export`;
+        }
+
+        async function showPage(page) {
+            const main = document.getElementById('main-content');
+            currentPage = page;
+            setActiveTab(page);
+            startAutoRefresh(page);
+            if (badgeCounts[page] !== undefined) setBadge(page, 0);
+
+            if (page === 'home') {
+                renderHome(main);
+            } else if (page === 'analysis') {
+                await renderAnalysis(main);
+            } else if (page === 'reports') {
+                await renderReports(main);
+            } else if (page === 'map') {
+                renderMap(main);
+            } else if (page === 'anomaly') {
+                await renderAnomaly(main);
+            } else {
+                await renderAlerts(main, page);
+            }
+        }
+
+        function startAutoRefresh(page) {
+            if (refreshTimer) clearInterval(refreshTimer);
+
+            refreshTimer = setInterval(() => {
+                if (currentPage !== page) return;
+
+                const main = document.getElementById('main-content');
+                if (page === 'home') {
+                    fetchRealData();
+                } else if (page === 'analysis') {
+                    renderAnalysis(main, true);
+                } else if (page === 'reports') {
+                    renderReports(main, true);
+                } else {
+                    renderAlerts(main, page, true);
+                }
+            }, page === 'home' ? 60000 : 30000);
+        }
+
+        function updateClock() {
+            const clock = document.getElementById('clock');
+            if (clock) clock.innerText = new Date().toLocaleTimeString();
+        }
+
+        updateClock();
+        setInterval(updateClock, 1000);
+        showPage('home');
+        bootstrapAlerts();
+
+        // ─── Map rendering (Leaflet + OpenStreetMap) ──────────────────────────
+        // Bengaluru monitoring stations — each marker shows live parameter data.
+        // Leaflet is loaded from CDN in <head>. Map is only initialised once;
+        // subsequent visits to the tab just invalidate the size (Leaflet needs
+        // this when the container was hidden during first render).
+
+        let leafletMap = null;
+        let weatherMarkers = {};
+
+        const MONITORING_STATIONS = [
+            { id: 'central', name: 'Central Bengaluru', lat: 12.9716, lon: 77.5946, desc: 'Primary monitoring station' },
+            { id: 'airport', name: 'Kempegowda Airport', lat: 13.1986, lon: 77.7066, desc: 'Aviation critical zone' },
+            { id: 'electronic', name: 'Electronic City', lat: 12.8399, lon: 77.6770, desc: 'Industrial south zone' },
+            { id: 'yelahanka', name: 'Yelahanka', lat: 13.1007, lon: 77.5963, desc: 'North residential zone' },
+        ];
+
+        // Colour a circle marker by severity of active alerts at that station
+        function severityToColor(severity) {
+            if (severity === 'Critical') return '#ef4444';   // red-500
+            if (severity === 'Warning') return '#f59e0b';   // amber-400
+            return '#10b981';                                 // emerald-500 — all clear
+        }
+
+        async function renderMap(main) {
+            main.innerHTML = `
+                <div class="mb-6">
+                    <h2 class="text-3xl font-black text-slate-900">Bengaluru Live Map</h2>
+                    <p class="text-slate-500 font-semibold mt-1">
+                        Real-time monitoring stations overlaid on OpenStreetMap.
+                        Marker colour: 🟢 All clear &nbsp; 🟡 Warning &nbsp; 🔴 Critical
+                    </p>
+                </div>
+                <div class="glass-card rounded-3xl overflow-hidden p-0">
+                    <div id="bengaluru-map"></div>
+                </div>
+                <div id="map-alert-feed" class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
+            `;
+
+            // Fetch latest weather + alerts in parallel
+            let weatherData = [];
+            let alertData = [];
+            try {
+                [weatherData, alertData] = await Promise.all([
+                    fetch(`${API_BASE}/api/latest-weather`).then(r => r.json()),
+                    fetch(`${API_BASE}/api/alerts?limit=20`).then(r => r.json()),
+                ]);
+            } catch (e) { /* map still renders without data */ }
+
+            // Build a quick lookup: parameter_name → measured_value
+            const weatherByParam = {};
+            for (const row of weatherData) {
+                weatherByParam[row.parameter_name] = row.measured_value;
+            }
+
+            // Highest severity across all current alerts
+            const globalSeverity = alertData.some(a => a.severity === 'Critical') ? 'Critical'
+                : alertData.some(a => a.severity === 'Warning') ? 'Warning'
+                    : 'none';
+
+            // Initialise Leaflet only once — reuse on subsequent tab visits
+            if (!leafletMap) {
+                leafletMap = L.map('bengaluru-map').setView([12.9716, 77.5946], 11);
+
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                    maxZoom: 18,
+                }).addTo(leafletMap);
+            } else {
+                // Container was hidden — Leaflet needs this to recalculate tile positions
+                setTimeout(() => leafletMap.invalidateSize(), 50);
+            }
+
+            // Clear old markers
+            for (const m of Object.values(weatherMarkers)) m.remove();
+            weatherMarkers = {};
+
+            // Add a circle marker for each monitoring station
+            for (const station of MONITORING_STATIONS) {
+                const color = severityToColor(globalSeverity);
+                const marker = L.circleMarker([station.lat, station.lon], {
+                    radius: 14,
+                    fillColor: color,
+                    color: '#fff',
+                    weight: 3,
+                    opacity: 1,
+                    fillOpacity: 0.85,
+                });
+
+                // Build popup content with live readings
+                const temp = weatherByParam['Temperature'] != null ? `${Number(weatherByParam['Temperature']).toFixed(1)}°C` : '--';
+                const wind = weatherByParam['Wind Speed'] != null ? `${Number(weatherByParam['Wind Speed']).toFixed(1)} km/h` : '--';
+                const humidity = weatherByParam['Humidity'] != null ? `${Number(weatherByParam['Humidity']).toFixed(0)}%` : '--';
+                const precip = weatherByParam['Precipitation'] != null ? `${Number(weatherByParam['Precipitation']).toFixed(1)} mm` : '--';
+
+                marker.bindPopup(`
+                    <div style="min-width:180px;font-family:sans-serif">
+                        <p style="font-weight:900;font-size:14px;margin:0 0 6px">${station.name}</p>
+                        <p style="color:#64748b;font-size:11px;margin:0 0 8px">${station.desc}</p>
+                        <table style="width:100%;font-size:12px;border-collapse:collapse">
+                            <tr><td style="padding:2px 6px 2px 0;color:#94a3b8">🌡 Temp</td><td style="font-weight:700">${temp}</td></tr>
+                            <tr><td style="padding:2px 6px 2px 0;color:#94a3b8">🌬 Wind</td><td style="font-weight:700">${wind}</td></tr>
+                            <tr><td style="padding:2px 6px 2px 0;color:#94a3b8">💧 Humidity</td><td style="font-weight:700">${humidity}</td></tr>
+                            <tr><td style="padding:2px 6px 2px 0;color:#94a3b8">🌧 Rain</td><td style="font-weight:700">${precip}</td></tr>
+                            <tr><td style="padding:2px 6px 2px 0;color:#94a3b8">⚠ Status</td>
+                                <td style="font-weight:900;color:${color}">${globalSeverity === 'none' ? 'All Clear' : globalSeverity}</td></tr>
+                        </table>
+                    </div>
+                `);
+
+                marker.addTo(leafletMap);
+                weatherMarkers[station.id] = marker;
+            }
+
+            // Render recent alerts below the map
+            const feed = document.getElementById('map-alert-feed');
+            if (feed) {
+                if (alertData.length === 0) {
+                    feed.innerHTML = `<div class="col-span-2 p-8 text-center text-slate-400 font-bold">No active alerts.</div>`;
+                } else {
+                    feed.innerHTML = alertData.slice(0, 6).map(alert => `
+                        <div class="glass-card border-l-8 ${alert.severity === 'Critical' ? 'border-red-500' : 'border-amber-400'} p-5 rounded-2xl">
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="px-2 py-1 rounded-lg text-[10px] font-black ${alert.severity === 'Critical' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'}">${alert.severity}</span>
+                                <span class="text-xs font-bold text-slate-500">${alert.department}</span>
+                            </div>
+                            <p class="text-sm text-slate-700">${alert.alert_message}</p>
+                            <p class="text-[10px] text-slate-400 mt-2">${new Date(alert.created_at).toLocaleString()}</p>
+                        </div>
+                    `).join('');
+                }
+            }
+        }
+
+        // ─── WebSocket client — real-time alert push ──────────────────────────
+        // Connects to the same port as the HTTP server.
+        // On new_alert: plays sound, bumps badge, shows a toast notification.
+        // On weather_update: refreshes the home tab if it's currently visible.
+        // Reconnects automatically if the connection drops.
+
+        let ws = null;
+        let wsReconnectTimer = null;
+
+        function connectWebSocket() {
+            const wsUrl = API_BASE.replace('http://', 'ws://').replace('https://', 'wss://');
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                console.log('📡 WebSocket connected');
+                setWsStatus('connected');
+                if (wsReconnectTimer) { clearTimeout(wsReconnectTimer); wsReconnectTimer = null; }
+            };
+
+            ws.onmessage = (event) => {
+                let msg;
+                try { msg = JSON.parse(event.data); } catch { return; }
+
+                if (msg.type === 'new_alert') {
+                    handleWsAlert(msg.alert);
+                } else if (msg.type === 'weather_update' && currentPage === 'home') {
+                    fetchRealData();
+                }
+            };
+
+            ws.onclose = () => {
+                setWsStatus('disconnected');
+                // Reconnect after 5 seconds
+                wsReconnectTimer = setTimeout(connectWebSocket, 5000);
+            };
+
+            ws.onerror = () => {
+                setWsStatus('error');
+                ws.close();
+            };
+        }
+
+        function setWsStatus(state) {
+            const el = document.getElementById('ws-status');
+            if (!el) return;
+            const states = {
+                connected: { text: '⬤ Live', cls: 'bg-emerald-100 text-emerald-700' },
+                disconnected: { text: '⬤ Reconnecting', cls: 'bg-amber-100 text-amber-700' },
+                error: { text: '⬤ WS Error', cls: 'bg-red-100 text-red-700' },
+            };
+            const s = states[state] || states.disconnected;
+            el.textContent = s.text;
+            el.className = `inline-block mt-1 px-2 py-1 rounded-full text-[10px] font-black ${s.cls}`;
+        }
+
+        function handleWsAlert(alert) {
+            // Play sound
+            if (alert.severity === 'Critical') playCriticalSound();
+            else playWarningSound();
+
+            // Bump the right tab badge
+            const page = departmentToPage[alert.department];
+            if (page) bumpBadge(page);
+
+            // Show a toast in the bottom-right corner
+            showToast(alert);
+
+            // If the map tab is open, refresh it so the marker colour updates
+            if (currentPage === 'map') {
+                renderMap(document.getElementById('main-content'));
+            }
+        }
+
+        function showToast(alert) {
+            const toast = document.createElement('div');
+            const isCritical = alert.severity === 'Critical';
+            toast.className = `fixed bottom-6 right-6 z-50 max-w-sm glass-card border-l-8 ${isCritical ? 'border-red-500' : 'border-amber-400'} p-4 rounded-2xl shadow-2xl`;
+            toast.style.animation = 'none';
+            toast.innerHTML = `
+                <div class="flex items-start gap-3">
+                    <span class="text-2xl">${isCritical ? '🚨' : '⚠️'}</span>
+                    <div>
+                        <p class="text-xs font-black uppercase ${isCritical ? 'text-red-600' : 'text-amber-600'} mb-1">${alert.severity} — ${alert.department}</p>
+                        <p class="text-sm text-slate-700 leading-snug">${alert.alert_message}</p>
+                        <p class="text-[10px] text-slate-400 mt-1">Just now · via WebSocket</p>
+                    </div>
+                    <button onclick="this.closest('.fixed').remove()" class="ml-auto text-slate-400 hover:text-slate-700 font-black text-lg leading-none">×</button>
+                </div>
+            `;
+            document.body.appendChild(toast);
+            // Auto-dismiss after 8 seconds
+            setTimeout(() => toast.remove(), 8000);
+        }
+
+        // Start WebSocket connection on page load
+        connectWebSocket();
+
+        // ── Show logged-in user in header ─────────────────────
+        if (WI_USER) {
+            const badge = document.getElementById('user-badge');
+            const nameEl = document.getElementById('user-name');
+            const roleEl = document.getElementById('user-role');
+            if (badge && nameEl && roleEl) {
+                nameEl.textContent = WI_USER.username || WI_USER.email;
+                roleEl.textContent = WI_USER.role;
+                badge.classList.remove('hidden');
+            }
+        }
+
+        // ── Anomaly Report tab ────────────────────────────────
+        // Shows Z-score anomaly detection results per region.
+        // This is the dual-layer detection research contribution:
+        //   Layer 1: adaptive threshold (relative exceedance)
+        //   Layer 2: Z-score (absolute statistical deviation from IMD baseline)
+        async function renderAnomaly(main, silent = false) {
+            if (!silent) {
+                main.innerHTML = `<div class="p-10 text-center animate-pulse text-slate-500 font-semibold">Loading anomaly analysis…</div>`;
+            }
+            try {
+                const [summaryRes, recentRes, regionsRes] = await Promise.all([
+                    fetch(`${API_BASE}/api/anomaly-report`),
+                    fetch(`${API_BASE}/api/anomaly-report/recent?limit=20`),
+                    fetch(`${API_BASE}/api/anomaly-report/regions`),
+                ]);
+                const summary = await summaryRes.json();
+                const recent = await recentRes.json();
+                const regions = await regionsRes.json();
+
+                const levelColor = (level) => ({
+                    'Extreme': 'bg-red-100 text-red-700 border-red-200',
+                    'Anomaly': 'bg-orange-100 text-orange-700 border-orange-200',
+                    'Unusual': 'bg-amber-100 text-amber-700 border-amber-200',
+                    'Normal': 'bg-emerald-100 text-emerald-700 border-emerald-200',
+                }[level] || 'bg-slate-100 text-slate-600');
+
+                const regionStatusColor = (status) => ({
+                    'Extreme': '#ef4444',
+                    'Anomaly': '#f97316',
+                    'Unusual': '#f59e0b',
+                    'Normal': '#10b981',
+                }[status] || '#94a3b8');
+
+                main.innerHTML = `
+                    <div class="mb-6">
+                        <h2 class="text-3xl font-black text-slate-900">🔬 Anomaly Detection</h2>
+                        <p class="text-slate-500 font-semibold mt-1">
+                            Z-score analysis against IMD 1981–2010 Karnataka baselines.
+                            <span class="text-indigo-600 font-bold">Dual-layer detection:</span>
+                            adaptive threshold + statistical deviation.
+                        </p>
+                    </div>
+
+                    <!-- Region status cards -->
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+                        ${regions.map(r => `
+                            <div class="glass-card rounded-2xl p-4 border-l-4" style="border-left-color: ${regionStatusColor(r.status)}">
+                                <p class="text-xs font-black text-slate-500 uppercase mb-1">${r.name}</p>
+                                <p class="text-lg font-black text-slate-900">${r.status}</p>
+                                <p class="text-[10px] text-slate-400 mt-1">
+                                    ${r.anomaly_count} anomalies · avg Z: ${Number(r.avg_z_score || 0).toFixed(2)}
+                                </p>
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <!-- Z-score explanation -->
+                    <div class="glass-card rounded-2xl p-5 mb-6 bg-indigo-50 border border-indigo-100">
+                        <h3 class="text-sm font-black text-indigo-800 mb-2">How Z-score anomaly detection works</h3>
+                        <p class="text-xs text-indigo-700 leading-relaxed">
+                            <strong>Z = (measured − seasonal_mean) / seasonal_std_dev</strong><br>
+                            Each reading is compared to the IMD 1981–2010 seasonal baseline for that city.
+                            A Z-score of 2.5 means the reading is 2.5 standard deviations from the historical norm —
+                            statistically unusual regardless of whether it crossed the adaptive threshold.
+                            This catches slow-drift anomalies that threshold-based systems miss.
+                        </p>
+                        <div class="flex gap-3 mt-3 flex-wrap">
+                            ${[['Normal', '|Z| < 1.5', 'emerald'], ['Unusual', '1.5–2.5', 'amber'], ['Anomaly', '2.5–3.5', 'orange'], ['Extreme', '> 3.5', 'red']].map(([l, r, c]) => `
+                                <span class="px-2 py-1 rounded-lg bg-${c}-100 text-${c}-700 text-[10px] font-black border border-${c}-200">${l}: ${r}</span>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <!-- Recent anomalies -->
+                    <div class="glass-card rounded-2xl p-5 mb-6">
+                        <h3 class="text-lg font-black mb-4">Recent Anomalies (last 7 days)</h3>
+                        ${recent.length === 0
+                        ? `<p class="text-slate-400 text-center py-6 font-semibold">No anomalies detected. Run <code class="bg-slate-100 px-1 rounded">node simulate_historical.js</code> to generate data.</p>`
+                        : `<div class="overflow-x-auto">
+                                <table class="w-full text-left text-sm">
+                                    <thead><tr class="text-slate-400 uppercase text-xs">
+                                        <th class="py-2 pr-4">Region</th>
+                                        <th class="py-2 pr-4">Parameter</th>
+                                        <th class="py-2 pr-4">Value</th>
+                                        <th class="py-2 pr-4">Baseline</th>
+                                        <th class="py-2 pr-4">Z-Score</th>
+                                        <th class="py-2 pr-4">Level</th>
+                                        <th class="py-2 pr-4">Time</th>
+                                    </tr></thead>
+                                    <tbody>
+                                        ${recent.map(r => `
+                                            <tr class="border-t border-slate-100">
+                                                <td class="py-2 pr-4 font-bold">${r.region_name}</td>
+                                                <td class="py-2 pr-4">${r.parameter_name}</td>
+                                                <td class="py-2 pr-4 font-mono">${Number(r.measured_value).toFixed(1)} ${r.unit_measure}</td>
+                                                <td class="py-2 pr-4 text-slate-400 font-mono">${Number(r.baseline_mean).toFixed(1)} ±${Number(r.baseline_std_dev).toFixed(1)}</td>
+                                                <td class="py-2 pr-4 font-mono font-black ${Number(r.z_score) > 0 ? 'text-red-600' : 'text-blue-600'}">${r.z_score > 0 ? '+' : ''}${r.z_score}</td>
+                                                <td class="py-2 pr-4"><span class="px-2 py-0.5 rounded-lg text-[10px] font-black border ${levelColor(r.anomaly_level)}">${r.anomaly_level}</span></td>
+                                                <td class="py-2 pr-4 text-slate-400 text-xs">${new Date(r.recorded_at).toLocaleString()}</td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>`
+                    }
+                    </div>
+
+                    <!-- Summary by region + parameter -->
+                    <div class="glass-card rounded-2xl p-5">
+                        <h3 class="text-lg font-black mb-4">Anomaly Summary by Region & Parameter</h3>
+                        ${summary.length === 0
+                        ? `<p class="text-slate-400 text-center py-6 font-semibold">No data yet. Run <code class="bg-slate-100 px-1 rounded">node simulate_historical.js</code> first.</p>`
+                        : `<div class="overflow-x-auto">
+                                <table class="w-full text-left text-sm">
+                                    <thead><tr class="text-slate-400 uppercase text-xs">
+                                        <th class="py-2 pr-4">Region</th>
+                                        <th class="py-2 pr-4">Parameter</th>
+                                        <th class="py-2 pr-4">Readings</th>
+                                        <th class="py-2 pr-4">Normal</th>
+                                        <th class="py-2 pr-4">Unusual</th>
+                                        <th class="py-2 pr-4">Anomaly</th>
+                                        <th class="py-2 pr-4">Extreme</th>
+                                        <th class="py-2 pr-4">Avg |Z|</th>
+                                        <th class="py-2 pr-4">Max |Z|</th>
+                                    </tr></thead>
+                                    <tbody>
+                                        ${summary.map(r => `
+                                            <tr class="border-t border-slate-100 ${r.extreme_count > 0 ? 'bg-red-50' : r.anomaly_count > 0 ? 'bg-orange-50' : ''}">
+                                                <td class="py-2 pr-4 font-bold">${r.region_name}</td>
+                                                <td class="py-2 pr-4">${r.parameter_name}</td>
+                                                <td class="py-2 pr-4 font-mono">${r.total_readings}</td>
+                                                <td class="py-2 pr-4 text-emerald-600 font-mono">${r.normal_count}</td>
+                                                <td class="py-2 pr-4 text-amber-600 font-mono">${r.unusual_count}</td>
+                                                <td class="py-2 pr-4 text-orange-600 font-mono font-bold">${r.anomaly_count}</td>
+                                                <td class="py-2 pr-4 text-red-600 font-mono font-black">${r.extreme_count}</td>
+                                                <td class="py-2 pr-4 font-mono">${r.avg_abs_z_score}</td>
+                                                <td class="py-2 pr-4 font-mono font-bold">${r.max_abs_z_score}</td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>`
+                    }
+                    </div>
+                `;
+            } catch (err) {
+                main.innerHTML = `<div class="p-20 text-center text-red-500 font-bold">Anomaly report unavailable: ${err.message}</div>`;
+            }
+        }
+
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,1013 @@
+/* ============================================================
+   GeoEnv-IP — Roti Palette Design System
+   Warm golden/olive-brown: Roti 50–950 as primary accent
+   ============================================================ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ──────────── ROTI COLOR PALETTE ──────────── */
+:root {
+  /* Roti golden scale */
+  --roti-50:  #F9F7ED;
+  --roti-100: #F1EDD1;
+  --roti-200: #E4DCA7;
+  --roti-300: #D4C575;
+  --roti-400: #C5AE4D;
+  --roti-500: #BFA440;   /* PRIMARY */
+  --roti-600: #977B30;
+  --roti-700: #775D29;
+  --roti-800: #644D27;
+  --roti-900: #564226;
+  --roti-950: #312312;
+
+  /* Neutral warm-sand scale (replaces old cream/charcoal) */
+  --sand-50:  #FAFAF7;
+  --sand-100: #F5F3EC;
+  --sand-200: #EBE7D9;
+  --sand-300: #D8D2BE;
+  --sand-400: #B8B09A;
+  --sand-500: #968E78;
+  --sand-600: #756D5A;
+  --sand-700: #58513F;
+  --sand-800: #3D3829;
+  --sand-900: #26221A;
+  --sand-950: #141210;
+
+  /* Legacy aliases — kept so old components still resolve */
+  --cream-50:  var(--roti-50);
+  --cream-100: var(--roti-100);
+  --cream-200: var(--roti-200);
+  --cream-300: var(--roti-300);
+  --cream-400: var(--roti-400);
+  --charcoal-900: var(--sand-950);
+  --charcoal-800: var(--sand-900);
+  --charcoal-700: var(--sand-800);
+  --charcoal-600: var(--sand-700);
+  --charcoal-500: var(--sand-600);
+  --charcoal-400: var(--sand-500);
+  --charcoal-300: var(--sand-400);
+  --charcoal-200: var(--sand-300);
+  --charcoal-100: var(--sand-200);
+  --charcoal-50:  var(--sand-100);
+
+  /* Accent — Roti Gold (primary) */
+  --amber-100: var(--roti-100);
+  --amber-200: var(--roti-200);
+  --amber-300: var(--roti-300);
+  --amber-400: var(--roti-400);
+  --amber-500: var(--roti-500);
+  --amber-600: var(--roti-600);
+  --amber-700: var(--roti-700);
+
+  /* Accent — Warm Slate Blue (secondary — unchanged for contrast) */
+  --blue-100: #dbeafe;
+  --blue-200: #bfdbfe;
+  --blue-300: #93c5fd;
+  --blue-400: #60a5fa;
+  --blue-500: #3b82f6;
+  --blue-600: #2563eb;
+
+  /* Accent — Warm Violet (tertiary) */
+  --violet-100: #ede9fe;
+  --violet-200: #ddd6fe;
+  --violet-300: #c4b5fd;
+  --violet-400: #a78bfa;
+  --violet-500: #8b5cf6;
+  --violet-600: #7c3aed;
+
+  /* Danger — Rose */
+  --rose-100: #ffe4e6;
+  --rose-200: #fecdd3;
+  --rose-300: #fda4af;
+  --rose-400: #fb7185;
+  --rose-500: #f43f5e;
+  --rose-600: #e11d48;
+
+  /* ── LIGHT MODE tokens ── */
+  --bg-page:        var(--roti-50);
+  --bg-surface:     var(--sand-100);
+  --bg-surface-alt: var(--roti-100);
+  --bg-card:        #ffffff;
+  --bg-sidebar:     #ffffff;
+  --text-primary:   var(--sand-950);
+  --text-secondary: var(--sand-800);
+  --text-muted:     var(--sand-700);
+  --text-mute:      var(--sand-700);
+  --border-subtle:  var(--roti-200);
+  --border-default: var(--roti-300);
+  --border-bright:  var(--roti-400);
+  --accent-primary: var(--roti-500);
+  --accent-secondary: var(--blue-500);
+  --shadow-card: 0 1px 4px rgba(49, 35, 18, 0.07), 0 1px 2px rgba(49, 35, 18, 0.04);
+  --shadow-lg:   0 8px 28px rgba(49, 35, 18, 0.12);
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+
+  /* ── Short-hand aliases ── */
+  --card:        #ffffff;
+  --surface-alt: var(--roti-100);
+  --primary:     var(--roti-500);
+  --primaryLt:   var(--roti-300);
+  --primaryBg:   var(--roti-100);
+  --secondary:   var(--blue-500);
+  --secondaryLt: var(--blue-300);
+  --secondaryBg: var(--blue-100);
+  --tertiary:    var(--violet-500);
+  --tertiaryLt:  var(--violet-300);
+  --tertiaryBg:  var(--violet-100);
+  --danger:      var(--rose-500);
+  --dangerLt:    var(--rose-300);
+  --dangerBg:    var(--rose-100);
+  --warning:     var(--roti-500);
+  --success:     #10b981;
+}
+
+/* ──────────── DARK MODE (html.dark) ──────────── */
+html.dark {
+  --bg-page:        var(--roti-950);
+  --bg-surface:     #1e1810;
+  --bg-surface-alt: #251e13;
+  --bg-card:        #2a2216;
+  --bg-sidebar:     #221c11;
+  --text-primary:   var(--roti-100);
+  --text-secondary: var(--roti-300);
+  --text-muted:     var(--roti-400);
+  --text-mute:      var(--roti-400);
+  --border-subtle:  rgba(191, 164, 64, 0.15);
+  --border-default: rgba(191, 164, 64, 0.25);
+  --border-bright:  rgba(191, 164, 64, 0.40);
+  --shadow-card: 0 1px 4px rgba(0, 0, 0, 0.30), 0 1px 2px rgba(0, 0, 0, 0.20);
+  --shadow-lg:   0 8px 28px rgba(0, 0, 0, 0.50);
+  --card:        #2a2216;
+  --surface-alt: #251e13;
+  --primary:     var(--roti-400);
+  --primaryLt:   var(--roti-300);
+  --primaryBg:   rgba(191, 164, 64, 0.12);
+  --secondary:   #60a5fa;
+  --secondaryLt: #93c5fd;
+  --secondaryBg: rgba(59, 130, 246, 0.12);
+  --tertiary:    #a78bfa;
+  --tertiaryLt:  #c4b5fd;
+  --tertiaryBg:  rgba(139, 92, 246, 0.12);
+  --danger:      #f87171;
+  --dangerLt:    #fca5a5;
+  --dangerBg:    rgba(248, 113, 113, 0.12);
+  --warning:     var(--roti-400);
+  --success:     #34d399;
+  --accent-primary: var(--roti-400);
+}
+
+/* ---------- Reset ---------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+.layer-panel-enter {
+  opacity: 0;
+  transform: translateX(-10px);
+}
+
+.layer-panel-enter-active {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 200ms, transform 200ms;
+}
+
+.metric-card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.metric-card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px -5px rgba(249, 158, 11, 0.20), 0 10px 10px -5px rgba(59, 130, 246, 0.12);
+}
+
+.hover-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* ---------- Scrollbar ---------- */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--cream-400);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--charcoal-400);
+}
+
+/* ---------- Focus ring ---------- */
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--amber-400);
+  outline-offset: 2px;
+}
+
+/* ---------- Selection ---------- */
+::selection {
+  background: var(--amber-200);
+  color: var(--charcoal-900);
+}
+
+/* ---------- Range / slider ---------- */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--cream-200);
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--amber-500);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.40);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.55);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--amber-500);
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.40);
+}
+
+/* ---------- Leaflet light/dark overrides ---------- */
+.leaflet-container {
+  background: var(--cream-100) !important;
+}
+
+.leaflet-control-zoom {
+  border: none !important;
+  border-radius: var(--radius-md) !important;
+  background: #ffffff !important;
+  box-shadow: var(--shadow-card) !important;
+}
+
+.leaflet-control-zoom a {
+  color: var(--charcoal-500) !important;
+  border-bottom: 1px solid var(--cream-200) !important;
+  transition: background 0.15s, color 0.15s;
+}
+
+.leaflet-control-zoom a:hover {
+  background: var(--cream-100) !important;
+  color: var(--amber-500) !important;
+}
+
+.leaflet-popup-content-wrapper {
+  background: #ffffff !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: var(--shadow-lg) !important;
+  color: var(--charcoal-800) !important;
+  border: 1px solid var(--cream-200);
+}
+
+.leaflet-popup-tip {
+  background: #ffffff !important;
+  border: 1px solid var(--cream-200);
+}
+
+.leaflet-control-attribution {
+  background: rgba(255, 255, 255, 0.92) !important;
+  color: var(--charcoal-400) !important;
+  font-size: 10px !important;
+  border-top-left-radius: var(--radius-sm) !important;
+  border: 1px solid var(--cream-200) !important;
+}
+
+.leaflet-control-attribution a {
+  color: var(--amber-500) !important;
+}
+
+/* ---------- Glass panels — Roti palette ---------- */
+.glass-panel-solid {
+  background: rgba(255, 255, 255, 0.80);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(197, 174, 77, 0.22);
+  box-shadow: var(--shadow-card);
+  transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+html.dark .glass-panel-solid {
+  background: rgba(42, 34, 22, 0.90);
+  border: 1px solid rgba(191, 164, 64, 0.16);
+}
+
+.glass-panel-solid:hover {
+  box-shadow: 0 8px 24px rgba(26, 20, 14, 0.10);
+}
+
+/* ---------- Ambient glow orbs ---------- */
+.ambient-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.glow-orb-1 {
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.14) 0%, transparent 70%);
+  top: -120px;
+  left: -120px;
+}
+
+.glow-orb-2 {
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(147, 197, 253, 0.12) 0%, transparent 70%);
+  bottom: 60px;
+  right: 20px;
+}
+
+.glow-orb-3 {
+  width: 320px;
+  height: 320px;
+  background: radial-gradient(circle, rgba(196, 181, 253, 0.10) 0%, transparent 70%);
+  top: 50%;
+  left: 45%;
+}
+
+/* ---------- Grid lines subtle overlay ---------- */
+.grid-bg-overlay {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(23, 20, 18, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(23, 20, 18, 0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* ---------- Fade / slide animations ---------- */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-out both;
+}
+
+.slide-in {
+  animation: fadeIn 0.3s ease-out both;
+}
+
+/* ---------- Button base behavior (keep from old index.css) ---------- */
+button:active {
+  transform: scale(0.97);
+}
+
+/* ---------- Keyboard shortcut label ---------- */
+kbd {
+  display: inline-block;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  background: var(--cream-200);
+  border: 1px solid var(--cream-300);
+  border-radius: 4px;
+  color: var(--charcoal-600);
+}
+
+/* ---------- Custom scrollbar overrides ---------- */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--cream-400);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--charcoal-400);
+}
+
+/* ---------- Replay slider track ---------- */
+.replay-track {
+  position: relative;
+  height: 8px;
+  border-radius: 4px;
+  background: linear-gradient(to right, var(--amber-400), var(--blue-400), var(--blue-500));
+  cursor: pointer;
+}
+
+.replay-thumb {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: white;
+  border: 3px solid var(--amber-500);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.20);
+  transform: translate(-50%, -50%);
+  cursor: grab;
+  transition: box-shadow 0.2s;
+}
+
+.replay-thumb:hover {
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.45);
+}
+
+/* ---------- Command Palette — Roti theme ---------- */
+.command-palette-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(49, 35, 18, 0.28);
+  backdrop-filter: blur(4px);
+  z-index: 5000;
+}
+
+.command-palette {
+  position: fixed;
+  top: 15%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(580px, 90vw);
+  background: #ffffff;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--roti-200);
+  box-shadow: 0 20px 60px rgba(49,35,18,0.16), 0 4px 16px rgba(49,35,18,0.08);
+  z-index: 5001;
+  overflow: hidden;
+  transition: background 0.3s ease;
+}
+
+html.dark .command-palette {
+  background: #2a2216;
+  border-color: rgba(191,164,64,0.22);
+}
+
+.command-palette-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 15px;
+  color: var(--text-primary);
+  font-family: inherit;
+}
+
+.command-palette-input::placeholder {
+  color: var(--text-muted);
+}
+
+.command-palette-group-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--roti-500);
+  padding: 8px 16px 4px;
+}
+
+.command-palette-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 14px;
+  cursor: pointer;
+  transition: background 0.12s, border-left-color 0.12s;
+  border-radius: 10px;
+  margin: 2px 8px;
+  border-left: 2px solid transparent;
+}
+
+.command-palette-item:hover {
+  background: var(--roti-100);
+  border-left-color: var(--roti-400);
+}
+
+html.dark .command-palette-item:hover {
+  background: rgba(191,164,64,0.10);
+}
+
+.command-palette-item.active {
+  background: var(--roti-100);
+  border-left-color: var(--roti-500);
+}
+
+html.dark .command-palette-item.active {
+  background: rgba(191,164,64,0.14);
+}
+
+.command-palette-item-icon {
+  color: var(--roti-500);
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: rgba(197,174,77,0.12);
+}
+
+html.dark .command-palette-item-icon {
+  background: rgba(197,174,77,0.10);
+  color: var(--roti-400);
+}
+
+.command-palette-item-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.command-palette-item-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 1px;
+  line-height: 1.3;
+}
+
+.command-palette-item-shortcut {
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--roti-600);
+  background: var(--roti-100);
+  border: 1px solid var(--roti-200);
+  border-radius: 5px;
+  padding: 2px 7px;
+  flex-shrink: 0;
+}
+
+html.dark .command-palette-item-shortcut {
+  background: rgba(191,164,64,0.12);
+  border-color: rgba(191,164,64,0.20);
+  color: var(--roti-300);
+}
+
+/* ---------- Timeline bar ---------- */
+.timeline-bar {
+  transition: height 0.5s ease, opacity 0.3s ease;
+}
+
+/* ---------- Float label helper ---------- */
+.float-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+  color: var(--charcoal-400);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   DANGER / ALERT ANIMATIONS
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── 1. Danger shake ── horizontal jolt for critical alert cards */
+@keyframes danger-shake {
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  15% {
+    transform: translateX(-5px) rotate(-0.4deg);
+  }
+
+  30% {
+    transform: translateX(5px) rotate(0.4deg);
+  }
+
+  45% {
+    transform: translateX(-4px) rotate(-0.3deg);
+  }
+
+  60% {
+    transform: translateX(4px) rotate(0.3deg);
+  }
+
+  75% {
+    transform: translateX(-2px);
+  }
+
+  90% {
+    transform: translateX(2px);
+  }
+}
+
+.danger-shake {
+  animation: danger-shake 0.55s cubic-bezier(.36, .07, .19, .97) both;
+}
+
+/* ── 2. Danger pulse ── red glow + scale, repeats while condition holds */
+@keyframes danger-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.00);
+    transform: scale(1);
+  }
+
+  30% {
+    box-shadow: 0 0 0 8px rgba(244, 63, 94, 0.25);
+    transform: scale(1.012);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0px rgba(244, 63, 94, 0.00);
+    transform: scale(1);
+  }
+}
+
+.danger-pulse {
+  animation: danger-pulse 1.8s ease-in-out infinite;
+}
+
+/* ── 3. Danger border flash ── 3 quick red-border flashes, then steady */
+@keyframes danger-blink {
+
+  0%,
+  100% {
+    border-color: var(--danger) !important;
+    border-width: 2px;
+    box-shadow: 0 0 8px rgba(244, 63, 94, .25);
+  }
+
+  50% {
+    border-color: transparent !important;
+    border-width: 2px;
+  }
+
+  75% {
+    border-color: var(--dangerLt) !important;
+    border-width: 2px;
+    box-shadow: 0 0 16px rgba(244, 63, 94, .15);
+  }
+}
+
+.danger-blink {
+  animation: danger-blink 1.0s ease-in-out 4;
+}
+
+/* ── 4. Danger text flicker ── "glitch" effect for extreme-risk labels */
+@keyframes text-flicker {
+
+  0%,
+  100% {
+    opacity: 1;
+    text-shadow: none;
+  }
+
+  42% {
+    opacity: 0.8;
+    text-shadow: 0 0 6px var(--danger), 2px 0 3px rgba(244, 63, 94, .40);
+  }
+
+  48% {
+    opacity: 1;
+    text-shadow: 0 0 14px var(--danger), -2px 0 7px rgba(244, 63, 94, .30);
+  }
+
+  54% {
+    opacity: 0.85;
+    text-shadow: 0 0 5px var(--danger);
+  }
+
+  60% {
+    opacity: 1;
+    text-shadow: none;
+  }
+}
+
+.danger-flicker {
+  animation: text-flicker 3.5s ease-in-out forwards;
+}
+
+/* ── 5. Siren stripe ── animated diagonal red stripe on alert items */
+@keyframes siren-scroll {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+.danger-stripe::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: repeating-linear-gradient(-45deg,
+      rgba(244, 63, 94, 0.10) 0px,
+      rgba(244, 63, 94, 0.10) 5px,
+      transparent 5px,
+      transparent 10px);
+  background-size: 200% 200%;
+  animation: siren-scroll 1.5s linear infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── 6. Critical dot ── red dot with expanding ring */
+
+@keyframes crit-dot-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.75);
+  }
+
+  70% {
+    box-shadow: 0 0 0 10px rgba(244, 63, 94, 0.00);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.00);
+  }
+}
+
+.danger-dot {
+  background: var(--danger) !important;
+  animation: crit-dot-ring 1.4s ease-out infinite;
+}
+
+/* ── 7. Alert urgency bar ── full-width animated red gradient */
+.alert-urgency-bar {
+  height: 3px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  background: linear-gradient(90deg,
+      var(--danger) 0%, #ff8a65 40%,
+      var(--danger) 60%, #ff8a65 100%);
+  background-size: 200% 100%;
+  animation: siren-scroll 1.2s linear infinite;
+}
+
+/* ── 8. Sound toggle button ── red glow when sound is on */
+.btn-sound {
+  transition: color 0.2s, background 0.2s;
+}
+
+.btn-sound::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle at center, rgba(244, 63, 94, .18) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+
+.btn-sound:hover::after {
+  opacity: 1;
+}
+
+.btn-sound.is-on::after {
+  opacity: 1;
+  animation: danger-pulse 1.8s ease-in-out infinite;
+}
+
+/* ============================================================
+   AMBIENT CALAMITY ANIMATIONS — floating particles, radar, data streams
+   ============================================================ */
+
+/* ── D1. Floating data particle ── tiny floating dots across the page */
+@keyframes float-particle {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 0;
+  }
+
+  10% {
+    opacity: 0.6;
+  }
+
+  90% {
+    opacity: 0.3;
+  }
+
+  100% {
+    transform: translateY(-80px) scale(0.4);
+    opacity: 0;
+  }
+}
+
+.ambient-particle {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  animation: float-particle 3.8s ease-in-out infinite;
+}
+
+.ambient-particle-sm {
+  width: 3px;
+  height: 3px;
+  background: rgba(245, 158, 11, 0.45);
+}
+
+.ambient-particle-md {
+  width: 5px;
+  height: 5px;
+  background: rgba(59, 130, 246, 0.30);
+  animation-duration: 5.2s;
+}
+
+.ambient-particle-danger {
+  width: 4px;
+  height: 4px;
+  background: rgba(244, 63, 94, 0.40);
+  animation-duration: 4.1s;
+}
+
+/* ── D2. Scanning radar ring ── expands a ring from centre over map */
+@keyframes radar-sweep {
+  0% {
+    transform: scale(0.1);
+    opacity: 0.7;
+  }
+
+  100% {
+    transform: scale(1.6);
+    opacity: 0.0;
+  }
+}
+
+.radar-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid rgba(59, 130, 246, 0.40);
+  pointer-events: none;
+  animation: radar-sweep 2.8s ease-out infinite;
+}
+
+.radar-ring-2 {
+  animation-delay: 0.9s;
+  border-color: rgba(244, 63, 94, 0.25);
+}
+
+.radar-ring-3 {
+  animation-delay: 1.8s;
+  border-color: rgba(245, 158, 11, 0.30);
+}
+
+/* ── D3. Pulsing data-stream bar ── thin bar that pulses from left to right */
+@keyframes data-pulse {
+  0% {
+    transform: scaleX(0);
+    opacity: 0;
+  }
+
+  30% {
+    transform: scaleX(1);
+    opacity: 0.7;
+  }
+
+  100% {
+    transform: scaleX(1);
+    opacity: 0;
+  }
+}
+
+.data-stream-bar {
+  position: absolute;
+  height: 2px;
+  background: linear-gradient(90deg, var(--primaryLt), var(--primary), var(--secondary));
+  border-radius: 1px;
+  transform-origin: left;
+  animation: data-pulse 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* ── D4. Hazard storm-glyph overlay ── storm clouds glyph drifting */
+@keyframes storm-drift {
+
+  0%,
+  100% {
+    transform: translateX(0) scale(1);
+    opacity: 0.10;
+  }
+
+  50% {
+    transform: translateX(20px) scale(1.05);
+    opacity: 0.18;
+  }
+}
+
+.storm-glyph {
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.10;
+  animation: storm-drift 7s ease-in-out infinite;
+  filter: blur(1px);
+}
+
+/* ── D5. Map danger vignette ── subtle red-amber glow on map edges */
+.map-danger-vignette {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 15;
+  box-shadow: inset 0 0 60px rgba(244, 63, 94, 0.08), inset 0 0 120px rgba(245, 158, 11, 0.04);
+}
+
+/* ── D6. Region health badge pill ── */
+.health-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: monospace;
+  letter-spacing: 0.04em;
+}
+
+/* ── D7. Calamity label tag ── floating alert tag on panels */
+.calamity-tag {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(244, 63, 94, 0.10);
+  color: var(--danger);
+  border: 1px solid rgba(244, 63, 94, 0.25);
+  animation: danger-pulse 2.2s ease-in-out infinite;
+  z-index: 5;
+  pointer-events: none;
+}
+
+/* ── D8. Layer danger hover ripple ── */
+.layer-btn-danger:hover {
+  box-shadow: 0 0 14px rgba(244, 63, 94, 0.30), inset 0 0 8px rgba(244, 63, 94, 0.08);
+  border-color: rgba(244, 63, 94, 0.45) !important;
+}
